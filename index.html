@@ -139,7 +139,6 @@ tfoot td.win{color:var(--win)}
   </main>
 </div>
 
-<div class="dlg" id="ry"><div style="text-align:center"><p style="font:700 26px/1.2 Cinzel,serif;margin-bottom:18px">Oh hi Ryan</p><a class="gold" id="rya" href="https://www.youtube.com/watch?v=dQw4w9WgXcQ" target="_blank" rel="noopener" style="display:inline-grid;place-items:center;min-height:44px;padding:0 22px;border-radius:10px;font-weight:700;text-decoration:none">Click here</a></div></div>
 <div class="sheet" id="cv"><div role="dialog" aria-label="Count a hand">
   <div class="shd"><h2>Count a hand</h2><button class="soft" id="cvx">Close</button></div>
   <p class="ref" id="cvref"></p>
@@ -260,10 +259,6 @@ t.addEventListener('input',e=>{
   S.s[+el.dataset.i][+el.dataset.r]=v===''?null:parseInt(v,10);
   update();
 });
-t.addEventListener('change',e=>{
-  if(e.target.dataset.n!==undefined&&e.target.value.trim().toLowerCase()==='ryan'){$('ry').classList.add('on');$('rya').focus()}
-});
-$('rya').addEventListener('click',()=>setTimeout(()=>$('ry').classList.remove('on'),50));
 t.addEventListener('keydown',e=>{
   const el=e.target;
   if(e.key!=='Enter'||el.dataset.r===undefined)return;
@@ -353,7 +348,7 @@ function shareText(g){
   const tot=g.p.map((_,i)=>total(g.s,i)),order=[...tot].sort((a,b)=>a-b);
   const rows=g.p.map((n,i)=>({n,t:tot[i],rk:order.indexOf(tot[i]),s:g.s[i]})).sort((a,b)=>a.t-b.t);
   const d=new Date(g.end||Date.now()).toLocaleDateString(undefined,{day:'numeric',month:'short'});
-  return `Five Crowns 👑 ${d}\n`+rows.map(r=>`${MED[r.rk]} ${r.n} ${r.t}`).join('\n');
+  return `Five Crowns 👑 ${d}\n`+rows.map(r=>`${MED[r.rk]} ${r.n} ${r.t}`).join('\n')+'\n\nKeep score: https://hamishcundy.github.io/five-crowns/';
 }
 const canShare=!!navigator.share;
 function share(g){$('shp').textContent=shareText(g);$('shc').textContent='Copy';$('shs').hidden=!canShare;$('sh').classList.add('on');(canShare?$('shs'):$('shc')).focus()}
