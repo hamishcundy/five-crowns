@@ -18,7 +18,7 @@
 --win:light-dark(#9a7206,#f4c542);--on:#fff}
 :root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
 *{box-sizing:border-box;min-width:0}
-body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 Figtree,system-ui,sans-serif;overflow-x:clip;min-height:100vh}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 Figtree,system-ui,sans-serif;min-height:100vh}
 .wrap{max-width:980px;margin:0 auto;padding:clamp(16px,3vw,32px) max(4vw,10px) 40px}
 header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;color:var(--on);margin-bottom:14px}
 h1{font:700 clamp(26px,5vw,40px)/1.05 Cinzel,serif;margin:0;display:flex;align-items:center;gap:10px}
@@ -37,7 +37,7 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--gold);outline-o
 .padbox{background:var(--pad);border-radius:16px;box-shadow:0 6px 24px rgba(0,0,0,.25)}
 table{border-collapse:separate;border-spacing:0;width:100%;table-layout:fixed;font-variant-numeric:tabular-nums}
 th,td{border-bottom:1px solid var(--line);padding:0;text-align:center}
-thead th{padding:8px 2px 4px;position:sticky;top:0;z-index:2;background:var(--pad);box-shadow:0 2px 0 var(--line)}
+thead th{padding:8px 2px 4px;background:var(--pad);box-shadow:0 2px 0 var(--line)}
 thead th:first-child{border-top-left-radius:16px}thead th:last-child{border-top-right-radius:16px}
 th.rd,td.rd{width:64px;text-align:left;padding-left:12px;white-space:nowrap;color:var(--mut);font-size:14px}
 td.rd b{color:var(--ink);font-size:16px;margin-right:4px}
@@ -93,6 +93,11 @@ tfoot td.win{color:var(--win)}
 #shp{white-space:pre;font:15px/1.5 system-ui,sans-serif;background:var(--line);padding:12px;border-radius:10px;overflow-x:auto;margin:0 0 16px;user-select:all;-webkit-user-select:all}
 @media(max-width:600px){#shp{font-size:13px;padding:10px}}
 @media(min-width:700px){.sheet{align-items:center}.sheet>div{border-radius:18px}}
+#pin{position:fixed;top:0;z-index:6;display:flex;background:var(--pad);border-radius:0 0 12px 12px;box-shadow:0 6px 16px rgba(0,0,0,.3);padding-top:env(safe-area-inset-top)}
+#pin span{flex:none;text-align:center;padding:7px 2px 6px;font-weight:700;font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.2}
+#pin span:first-child{text-align:left;padding-left:10px;color:var(--mut);font-size:12px;font-weight:600}
+#pin small{display:block;font-size:12px;font-weight:600;color:var(--mut)}#pin .win small{color:var(--win)}
+@media(max-width:600px){#pin span{font-size:13px}}
 #fx{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:20}
 [hidden]{display:none!important}
 @media(max-width:600px){.banner{flex-wrap:wrap}.lead{margin-left:0;text-align:left;width:100%}th.rd,td.rd{width:46px;padding-left:8px}td.rd{font-size:12px}.pname,.ro{font-size:13px}td input{font-size:16px}tfoot td{font-size:18px}}
@@ -100,6 +105,7 @@ tfoot td.win{color:var(--win)}
 </head>
 <body>
 <canvas id="fx" hidden></canvas>
+<div id="pin" hidden aria-hidden="true"></div>
 <div class="wrap">
   <header>
     <h1><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 18 2 7l5 4 5-7 5 7 5-4-1 11z" fill="#f4c542" stroke="#2a1700" stroke-width="1"/><rect x="3" y="19" width="18" height="2.5" rx="1" fill="#f4c542"/></svg>Five Crowns</h1>
@@ -141,7 +147,7 @@ tfoot td.win{color:var(--win)}
   <div class="tot"><span class="sum" id="sum">0</span><span class="chips" id="chips"></span><button class="soft" id="clr">Clear</button></div>
   <div class="use" id="use"></div>
 </div></div>
-<div class="dlg" id="sh"><div><p>Share result</p><pre id="shp"></pre><div class="btns"><button class="soft" id="shx">Close</button><button class="gold" id="shc">Copy</button></div></div></div>
+<div class="dlg" id="sh"><div><p>Share result</p><pre id="shp"></pre><div class="btns"><button class="soft" id="shx">Close</button><button class="soft" id="shc">Copy</button><button class="gold" id="shs" hidden>Share…</button></div></div></div>
 <div class="dlg" id="dlg"><div><p id="dq"></p><div class="btns"><button class="soft" id="no">Cancel</button><button class="gold" id="yes">OK</button></div></div></div>
 
 <script>
@@ -242,6 +248,7 @@ function update(){
     if(!S.done){S.done=true;if(!booting)confetti()}
   }
   saveCur();
+  pinBuild(tots,min,any);
 }
 
 t.addEventListener('input',e=>{
@@ -276,7 +283,7 @@ $('add').onclick=()=>{
   const ins=t.querySelectorAll('.pname');ins[ins.length-1].select();
 };
 $('new').onclick=()=>{
-  const start=()=>{S=fresh([...S.p]);S.s=norm(S.s);render();scrollTo(0,0)};
+  const start=()=>{stopConfetti();S=fresh([...S.p]);S.s=norm(S.s);render();scrollTo(0,0)};
   if(S.done||!S.s.some(a=>a.some(ok)))return start();
   ask('Start a new game? This one isn’t finished, so it won’t be saved to History.','Start new game',start);
 };
@@ -348,7 +355,9 @@ function shareText(g){
   const d=new Date(g.end||Date.now()).toLocaleDateString(undefined,{day:'numeric',month:'short'});
   return `Five Crowns 👑 ${d}\n`+rows.map(r=>`${MED[r.rk]} ${r.n} ${r.t}`).join('\n');
 }
-function share(g){$('shp').textContent=shareText(g);$('shc').textContent='Copy';$('sh').classList.add('on');$('shc').focus()}
+const canShare=!!navigator.share;
+function share(g){$('shp').textContent=shareText(g);$('shc').textContent='Copy';$('shs').hidden=!canShare;$('sh').classList.add('on');(canShare?$('shs'):$('shc')).focus()}
+$('shs').onclick=()=>{navigator.share({text:$('shp').textContent}).catch(()=>{})};
 $('shb').onclick=()=>share({p:S.p,s:S.s,end:(H.find(x=>x.id===S.id)||{}).end});
 $('shx').onclick=()=>$('sh').classList.remove('on');
 $('shc').onclick=async()=>{
@@ -362,20 +371,57 @@ function ask(qs,label,fn){$('dq').textContent=qs;$('yes').textContent=label;pend
 $('no').onclick=()=>{$('dlg').classList.remove('on');pending=null};
 $('yes').onclick=()=>{$('dlg').classList.remove('on');const f=pending;pending=null;if(f)f()};
 
+/* ---------- pinned names ---------- */
+const pin=$('pin');
+function pinBuild(tots,min,any){
+  pin.innerHTML='<span>Rd</span>'+S.p.map((n,i)=>`<span class="${any&&tots[i]===min?'win':''}">${esc(n)}<small>${tots[i]}</small></span>`).join('');
+  pinPos();
+}
+let pinRaf=0;
+function pinPos(){
+  pinRaf=0;
+  const th=t.tHead;
+  if($('play').hidden||!th){pin.hidden=true;return}
+  const r=th.getBoundingClientRect(),tr=t.getBoundingClientRect();
+  const show=r.top<0&&tr.bottom>130;
+  pin.hidden=!show;
+  if(!show)return;
+  pin.style.left=tr.left+'px';pin.style.width=tr.width+'px';
+  const cells=th.rows[0].cells,sp=pin.children;
+  for(let i=0;i<sp.length&&i<cells.length;i++)sp[i].style.width=cells[i].getBoundingClientRect().width+'px';
+}
+const pinQ=()=>{if(!pinRaf)pinRaf=requestAnimationFrame(pinPos)};
+addEventListener('scroll',pinQ,{passive:true});addEventListener('resize',pinQ);
+
 /* ---------- confetti ---------- */
+let fxRaf=0;
+function stopConfetti(){cancelAnimationFrame(fxRaf);fxRaf=0;$('fx').hidden=true}
 function confetti(){
   if(matchMedia('(prefers-reduced-motion: reduce)').matches)return;
-  const c=$('fx'),x=c.getContext('2d'),dpr=devicePixelRatio||1;
-  c.hidden=false;const W=c.width=innerWidth*dpr,Hh=c.height=innerHeight*dpr;
+  stopConfetti();
+  const c=$('fx'),x=c.getContext('2d'),DUR=20000,FADE=2500;
+  let W=0,Hh=0;
+  const size=()=>{const d=devicePixelRatio||1;W=innerWidth;Hh=innerHeight;c.width=W*d;c.height=Hh*d;x.setTransform(d,0,0,d,0,0)};
+  size();addEventListener('resize',size);c.hidden=false;
   const cols=['#f4c542','#e8452c','#2f7de1','#2fa84f','#ffffff','#b04ad8'];
-  const ps=Array.from({length:220},()=>({x:W/2+(Math.random()-.5)*W*.3,y:Hh*.35,vx:(Math.random()-.5)*22*dpr,vy:(-Math.random()*20-6)*dpr,s:(5+Math.random()*7)*dpr,r:Math.random()*6,vr:(Math.random()-.5)*.4,c:cols[Math.random()*cols.length|0]}));
-  const t0=performance.now();
-  (function f(now){
+  const mk=(burst)=>({x:burst?W/2+(Math.random()-.5)*W*.3:Math.random()*W,y:burst?Hh*.35:-20,vx:burst?(Math.random()-.5)*900:(Math.random()-.5)*60,vy:burst?-Math.random()*900-250:Math.random()*60,s:5+Math.random()*7,r:Math.random()*6,vr:(Math.random()-.5)*8,ph:Math.random()*6,c:cols[Math.random()*cols.length|0]});
+  let ps=Array.from({length:180},()=>mk(true));
+  const t0=performance.now();let last=t0,acc=0;
+  const f=now=>{
+    const dt=Math.min(.05,(now-last)/1000),life=now-t0;last=now;
+    if(life<DUR-FADE){acc+=dt*70;while(acc>=1&&ps.length<400){ps.push(mk(false));acc--}}
     x.clearRect(0,0,W,Hh);
-    const life=now-t0;
-    ps.forEach(p=>{p.vy+=.55*dpr;p.vx*=.985;p.x+=p.vx;p.y+=p.vy;p.r+=p.vr;x.save();x.translate(p.x,p.y);x.rotate(p.r);x.globalAlpha=Math.max(0,1-life/4200);x.fillStyle=p.c;x.fillRect(-p.s/2,-p.s/3,p.s,p.s*.6);x.restore()});
-    if(life<4200)requestAnimationFrame(f);else{x.clearRect(0,0,W,Hh);c.hidden=true}
-  })(t0);
+    x.globalAlpha=life>DUR-FADE?Math.max(0,(DUR-life)/FADE):1;
+    ps=ps.filter(p=>{
+      p.vy+=700*dt;p.vx*=Math.pow(.3,dt);
+      const term=110+p.s*10;if(p.vy>term)p.vy=term;
+      p.x+=(p.vx+Math.sin(life/400+p.ph)*40)*dt;p.y+=p.vy*dt;p.r+=p.vr*dt;
+      x.save();x.translate(p.x,p.y);x.rotate(p.r);x.fillStyle=p.c;x.fillRect(-p.s/2,-p.s/3,p.s,p.s*.6*Math.abs(Math.cos(p.r*1.3))+1);x.restore();
+      return p.y<Hh+30;
+    });
+    if(life<DUR)fxRaf=requestAnimationFrame(f);else{removeEventListener('resize',size);stopConfetti()}
+  };
+  fxRaf=requestAnimationFrame(f);
 }
 
 render();
