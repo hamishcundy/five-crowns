@@ -97,11 +97,12 @@ tfoot td.win{color:var(--win)}
 .key{min-height:58px;background:var(--line);display:grid;place-items:center;padding:4px;line-height:1.15;color:var(--ink)}
 .key b{font:700 20px Cinzel,serif;display:block}.key small{font-size:13px;color:var(--mut)}
 .key.wild{background:var(--gold);color:#2a1700}.key.wild small{color:#2a1700}
-.tot{display:flex;align-items:center;gap:12px;margin:14px 0 8px;flex-wrap:wrap}
-.sum{font:700 40px/1 Figtree,sans-serif;font-variant-numeric:tabular-nums;min-width:2ch}
-.chips{flex:1;display:flex;flex-wrap:wrap;gap:4px}
-.chip{min-height:30px;padding:0 9px;font-size:14px;background:var(--line);border-radius:8px}
+.tot{display:flex;align-items:center;gap:12px;margin:14px 0 8px}
+.sum{font:700 40px/1 Figtree,sans-serif;font-variant-numeric:tabular-nums;min-width:3ch}
+.chips{flex:1;display:flex;gap:4px;height:34px;align-items:center;overflow-x:auto;scrollbar-width:none}.chips::-webkit-scrollbar{display:none}
+.chip{flex:none;min-height:30px;padding:0 9px;font-size:14px;background:var(--line);border-radius:8px}
 .use p{margin:8px 0;color:var(--mut);font-size:14px}
+button:disabled{opacity:.45;cursor:default}
 .inl{min-height:36px;padding:0 12px;font-size:14px;margin-top:6px}
 #shp{white-space:pre;font:15px/1.5 system-ui,sans-serif;background:var(--line);padding:12px;border-radius:10px;overflow-x:auto;margin:0 0 16px;user-select:all;-webkit-user-select:all}
 @media(max-width:600px){#shp{font-size:13px;padding:10px}}
@@ -339,7 +340,8 @@ function drawCV(){
   $('keys').innerHTML=KEYS.map(k=>`<button class="key${k===w||k==='Joker'?' wild':''}" data-k="${k}"><b>${k==='Joker'?'★':k}</b><small>${k==='Joker'?'Joker 50':val(k)}</small></button>`).join('');
   $('sum').textContent=sum;
   $('chips').innerHTML=hand.map((k,i)=>`<button class="chip" data-x="${i}" aria-label="Remove ${k}">${k==='Joker'?'Joker':k} ×</button>`).join('');
-  $('use').innerHTML=cr<11&&hand.length?`<p>Enter ${sum} for round ${cr+1}:</p><div class="btns">${S.p.map((n,i)=>`<button class="soft" data-u="${i}">${esc(n)}</button>`).join('')}</div>`:'';
+  $('use').innerHTML=cr<11?`<p>${hand.length?`Enter ${sum} for round ${cr+1}:`:'Tap the cards, then pick whose hand it is.'}</p><div class="btns">${S.p.map((n,i)=>`<button class="soft" data-u="${i}"${hand.length?'':' disabled'}>${esc(n)}</button>`).join('')}</div>`:'';
+  $('chips').scrollLeft=1e6;
 }
 const closeCV=()=>$('cv').classList.remove('on');
 $('cvb').onclick=()=>{hand=[];drawCV();$('cv').classList.add('on');$('cvx').focus()};
