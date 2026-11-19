@@ -112,6 +112,12 @@ button:disabled{opacity:.45;cursor:default}
 #pin span:first-child{text-align:left;padding-left:10px;color:var(--mut);font-size:12px;font-weight:600}
 #pin small{display:block;font-size:12px;font-weight:600;color:var(--mut)}#pin .win small{color:var(--win)}
 @media(max-width:600px){#pin span{font-size:13px}}
+.tag{display:block;height:16px;font-size:11px;font-weight:700;line-height:16px;color:var(--mut)}
+.tag.dl{color:var(--win)}
+.bt{flex:1 1 0}
+.dlr{display:block;font-size:15px;margin-top:2px}.dlr strong{color:var(--win)}
+.lnk{min-height:32px;padding:0 6px;background:none;color:var(--win);text-decoration:underline;font-size:14px}
+#pin i{display:inline-block;font-style:normal;font-size:10px;line-height:14px;padding:0 4px;margin-right:3px;border-radius:4px;background:var(--gold);color:#2a1700;vertical-align:2px}
 #fx{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:20}
 [hidden]{display:none!important}
 @media(max-width:600px){.banner{flex-wrap:wrap}.lead{margin-left:0;text-align:left;width:100%}th.rd,td.rd{width:46px;padding-left:8px}td.rd{font-size:12px}.pname,.ro{font-size:13px}td input{font-size:16px}tfoot td{font-size:18px}}
@@ -134,7 +140,7 @@ button:disabled{opacity:.45;cursor:default}
   <main id="play">
     <section class="banner" aria-live="polite">
       <div class="card" id="wc">3</div>
-      <div><b id="rt">Round 1 · 3 cards</b><span id="ws">Threes and Jokers are wild</span><br><button class="soft inl" id="cvb">Card values</button></div>
+      <div class="bt"><b id="rt">Round 1 · 3 cards</b><span id="ws">Threes and Jokers are wild</span><span class="dlr" id="dlr"><span id="dlt"></span><button class="lnk" id="dlc">Change</button></span><button class="soft inl" id="cvb">Card values</button></div>
       <div class="lead"><span id="ll">Leading</span><b id="ld" style="display:block">—</b><button class="gold inl" id="shb" hidden>Share result</button></div>
     </section>
     <div class="padbox"><table id="t"></table></div>
@@ -161,6 +167,7 @@ button:disabled{opacity:.45;cursor:default}
   <div class="use" id="use"></div>
 </div></div>
 <div class="dlg" id="sh"><div><p>Share result</p><pre id="shp"></pre><div class="btns"><button class="soft" id="shx">Close</button><button class="soft" id="shc">Copy</button><button class="gold" id="shs" hidden>Share…</button></div></div></div>
+<div class="dlg" id="dp"><div><p>Who’s dealing this round?</p><div class="btns" id="dpl" style="justify-content:flex-start;margin-bottom:12px"></div><div class="btns"><button class="soft" id="dpx">Cancel</button></div></div></div>
 <div class="dlg" id="dlg"><div><p id="dq"></p><div class="btns"><button class="soft" id="no">Cancel</button><button class="gold" id="yes">OK</button></div></div></div>
 
 <script>
@@ -172,7 +179,7 @@ const $=id=>document.getElementById(id);
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[c]);
 const ok=Number.isFinite;
 const newId=()=>'g-'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
-const fresh=p=>({id:newId(),p,s:p.map(()=>[]),at:Date.now(),done:false});
+const fresh=(p,d0=0)=>({id:newId(),p,s:p.map(()=>[]),at:Date.now(),done:false,d0});
 const ord=n=>n+(['th','st','nd','rd'][(n%100>10&&n%100<14)?0:n%10]||'th');
 const fmtDate=t=>new Date(t).toLocaleDateString(undefined,{weekday:'short',day:'numeric',month:'short',year:'numeric'});
 const norm=s=>s.map(a=>Array.from({length:11},(_,r)=>ok(a[r])?a[r]:null));
@@ -209,7 +216,7 @@ async function connect(){
     const [cur,games]=await Promise.all([c.doc('current').get(),c.where('k','==','game').get()]);
     clearTimeout(timer);
     col=c;db=d;
-    if(cur.exists){const v=cur.data();last.current=JSON.stringify(v);if(Array.isArray(v.p)&&(v.at||0)>=(S.at||0)){S={id:v.id,p:[...v.p],s:norm(v.s||[]),at:v.at,done:!!v.done}}}
+    if(cur.exists){const v=cur.data();last.current=JSON.stringify(v);if(Array.isArray(v.p)&&(v.at||0)>=(S.at||0)){S={id:v.id,p:[...v.p],s:norm(v.s||[]),at:v.at,done:!!v.done,d0:v.d0|0}}}
     const remote=games.docs.map(x=>{const v=x.data();return{id:v.id,at:v.at,end:v.end,p:[...v.p],s:v.s.map(a=>[...a]),tot:[...v.tot],win:[...v.win]}});
     const ids=new Set(remote.map(g=>g.id));
     H.filter(g=>!ids.has(g.id)).forEach(g=>{remote.push(g);saveGame(g)});
@@ -228,12 +235,13 @@ const curRound=()=>{for(let r=0;r<11;r++){if(S.p.some((_,i)=>!ok(S.s[i][r])))ret
 
 function grid(p,s,edit){
   const n=p.length;
-  const head='<thead><tr><th class="rd">Rd</th>'+p.map((nm,i)=>`<th>${edit?`<input class="pname" data-n="${i}" value="${esc(nm)}" aria-label="Player ${i+1} name">${n>2?`<button class="x" data-del="${i}" aria-label="Remove ${esc(nm)}">×</button>`:''}`:`<span class="ro">${esc(nm)}</span>`}</th>`).join('')+'</tr></thead>';
+  const head='<thead><tr><th class="rd">Rd</th>'+p.map((nm,i)=>`<th>${edit?`<input class="pname" data-n="${i}" value="${esc(nm)}" aria-label="Player ${i+1} name"><span class="tag" id="tg${i}"></span>${n>2?`<button class="x" data-del="${i}" aria-label="Remove ${esc(nm)}">×</button>`:''}`:`<span class="ro">${esc(nm)}</span>`}</th>`).join('')+'</tr></thead>';
   const body='<tbody>'+R.map((r,ri)=>`<tr data-r="${ri}"><td class="rd"><b>${r}</b>${ri+3}c</td>`+p.map((_,i)=>{const v=s[i][ri];return edit?`<td><input id="c${ri}-${i}" data-r="${ri}" data-i="${i}" inputmode="numeric" pattern="[0-9]*" placeholder="·" value="${ok(v)?v:''}" aria-label="${esc(p[i])} round ${ri+1}"></td>`:`<td class="v">${ok(v)?v:''}</td>`}).join('')+'</tr>').join('')+'</tbody>';
   const tots=p.map((_,i)=>total(s,i)),min=Math.min(...tots),order=[...tots].sort((a,b)=>a-b);
   const foot='<tfoot><tr><td class="rd">Total</td>'+p.map((_,i)=>`<td id="${edit?'tot'+i:''}" class="${tots[i]===min?'win':''}">${tots[i]}<span class="rank">${ord(order.indexOf(tots[i])+1)}</span></td>`).join('')+'</tr></tfoot>';
   return head+body+foot;
 }
+const dealer=cr=>(((S.d0|0)+cr)%S.p.length+S.p.length)%S.p.length;
 function render(){t.innerHTML=grid(S.p,S.s,true);update()}
 
 function update(){
@@ -248,10 +256,15 @@ function update(){
     $('wc').textContent=R[cr];$('rt').textContent=`Round ${cr+1} · ${cr+3} cards`;$('ws').textContent=`${PL[R[cr]]} and Jokers are wild`;
     $('ll').textContent='Leading';$('ld').textContent=any?`${leaders.join(' & ')} · ${min}`:'—';$('ll').hidden=$('ld').hidden=false;$('shb').hidden=true;
     $('new').textContent='New game';
+    const n=S.p.length,dl=dealer(cr),st=(dl+1)%n;
+    $('dlr').hidden=false;
+    $('dlt').innerHTML=`<strong>${esc(S.p[dl])}</strong> deals · ${esc(S.p[st])} starts `;
+    S.p.forEach((_,i)=>{const g=$('tg'+i);g.textContent=i===dl?'Deals':i===st?'Starts':'';g.className='tag'+(i===dl?' dl':'')});
     if(S.done){S.done=false;dropGame(S.id)}
   }else{
     $('wc').textContent='♛';$('rt').textContent=`${leaders.join(' & ')} ${leaders.length>1?'win':'wins'}!`;$('ws').textContent=`${min} points · saved to History`;
     $('ll').hidden=$('ld').hidden=true;$('shb').hidden=false;
+    $('dlr').hidden=true;S.p.forEach((_,i)=>{$('tg'+i).textContent=''});
     $('new').textContent='Next game';
     const g={id:S.id,at:S.at,end:Date.now(),p:[...S.p],s:norm(S.s),tot:tots,win:leaders};
     const prev=H.find(x=>x.id===S.id);
@@ -284,7 +297,7 @@ t.addEventListener('keydown',e=>{
 t.addEventListener('click',e=>{
   const d=e.target.closest('[data-del]');if(!d)return;
   const i=+d.dataset.del;
-  ask(`Remove ${S.p[i]} and their scores?`,'Remove',()=>{S.p.splice(i,1);S.s.splice(i,1);render()});
+  ask(`Remove ${S.p[i]} and their scores?`,'Remove',()=>{S.p.splice(i,1);S.s.splice(i,1);if(i<(S.d0|0))S.d0--;S.d0=(S.d0|0)%S.p.length;render()});
 });
 $('add').onclick=()=>{
   if(S.p.length>=8)return;
@@ -292,7 +305,7 @@ $('add').onclick=()=>{
   const ins=t.querySelectorAll('.pname');ins[ins.length-1].select();
 };
 $('new').onclick=()=>{
-  const start=()=>{stopConfetti();S=fresh([...S.p]);S.s=norm(S.s);render();scrollTo(0,0)};
+  const start=()=>{stopConfetti();S=fresh([...S.p],((S.d0|0)+1)%S.p.length);S.s=norm(S.s);render();scrollTo(0,0)};
   if(S.done||!S.s.some(a=>a.some(ok)))return start();
   ask('Start a new game? This one isn’t finished, so it won’t be saved to History.','Start new game',start);
 };
@@ -381,10 +394,25 @@ function ask(qs,label,fn){$('dq').textContent=qs;$('yes').textContent=label;pend
 $('no').onclick=()=>{$('dlg').classList.remove('on');pending=null};
 $('yes').onclick=()=>{$('dlg').classList.remove('on');const f=pending;pending=null;if(f)f()};
 
+/* ---------- dealer picker ---------- */
+$('dlc').onclick=()=>{
+  const dl=dealer(curRound());
+  $('dpl').innerHTML=S.p.map((n,i)=>`<button class="${i===dl?'gold':'soft'}" data-dp="${i}">${esc(n)}</button>`).join('');
+  $('dp').classList.add('on');$('dpx').focus();
+};
+$('dpx').onclick=()=>$('dp').classList.remove('on');
+$('dpl').onclick=e=>{
+  const b=e.target.closest('[data-dp]');if(!b)return;
+  const n=S.p.length,cr=curRound();
+  S.d0=((+b.dataset.dp-cr)%n+n)%n;
+  $('dp').classList.remove('on');update();
+};
+
 /* ---------- pinned names ---------- */
 const pin=$('pin');
 function pinBuild(tots,min,any){
-  pin.innerHTML='<span>Rd</span>'+S.p.map((n,i)=>`<span class="${any&&tots[i]===min?'win':''}">${esc(n)}<small>${tots[i]}</small></span>`).join('');
+  const cr=curRound(),dl=cr<11?dealer(cr):-1;
+  pin.innerHTML='<span>Rd</span>'+S.p.map((n,i)=>`<span class="${any&&tots[i]===min?'win':''}">${i===dl?'<i>D</i>':''}${esc(n)}<small>${tots[i]}</small></span>`).join('');
   pinPos();
 }
 let pinRaf=0;
